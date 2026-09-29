@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Twenty Tool Calls</title>
+<style>
+  :root {
+    --bg: #f7f6f2; --card: #efeee9; --ink: #131312; --muted: #67655f; --hair: #d5d3cc;
+    --orange: #e84c22; --wash: #ffe8db; --pill: #e3e1da; --done: #e6e5df;
+    --sans: -apple-system, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+    --mono: "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink); font-family: var(--sans); overflow: hidden; }
+  #stage { width: 1920px; height: 1080px; position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+
+  header { position: absolute; left: 64px; right: 64px; top: 44px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .kicker { display: flex; gap: 18px; align-items: stretch; }
+  .kicker i { width: 5px; background: var(--orange); border-radius: 1px; }
+  .kicker .k { font-size: 17px; letter-spacing: .16em; color: var(--muted); }
+  .kicker h1 { font-size: 50px; font-weight: 500; letter-spacing: -.02em; margin-top: 6px; }
+  .kicker h1 b { font-weight: 500; color: var(--orange); }
+  .kicker .sub { font-size: 20px; color: var(--muted); margin-top: 6px; }
+  header img { height: 44px; margin-top: 6px; }
+
+  #cards { position: absolute; left: 64px; right: 64px; top: 186px; display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .card { height: 822px; background: var(--card); border-radius: 18px; padding: 24px 30px 20px; display: flex; flex-direction: column;
+          transition: background .35s ease; position: relative; }
+  .card.won { background: var(--wash); }
+  .card.replay.won { background: var(--done); }
+  .card .head { display: flex; justify-content: space-between; align-items: baseline; }
+  .card h2 { font-size: 38px; font-weight: 600; letter-spacing: -.02em; }
+  .card h2 b { color: var(--orange); font-weight: 600; }
+  .card .mode { font-size: 16px; color: var(--muted); margin-top: 2px; }
+  .status { font: 500 12px/1 var(--mono); letter-spacing: .12em; color: var(--muted); display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--hair); }
+  .status.live { color: var(--orange); } .status.live::before { background: var(--orange); animation: pulse .8s ease-in-out infinite alternate; }
+  .status.done { color: var(--orange); } .status.done::before { background: var(--orange); }
+  .replay .status.live, .replay .status.done { color: var(--ink); } .replay .status.live::before, .replay .status.done::before { background: var(--ink); }
+  @keyframes pulse { from { opacity: .25 } to { opacity: 1 } }
+
+  .how { margin-top: 14px; padding: 10px 14px; border-radius: 10px; background: rgba(19,19,18,.045); font-size: 16px; line-height: 1.38; color: #3b3a36; }
+  .how b { display: block; font: 600 11px var(--mono); letter-spacing: .12em; color: var(--muted); margin-bottom: 3px; }
+  .how em { font-style: normal; font-weight: 600; color: var(--orange); }
+  .replay .how em { color: var(--ink); }
+
+  .log { max-height: 380px; margin-top: 10px; overflow: hidden; display: flex; flex-direction: column; flex: none; }
+  .row { display: grid; grid-template-columns: 24px 70px 1fr auto 70px; align-items: center; column-gap: 8px; height: 25px; font-size: 16px;
+         border-bottom: 1px solid rgba(19,19,18,.06); flex: none; }
+  .row .n { font: 12px var(--mono); color: var(--muted); text-align: right; }
+  .row .fn { font: 12px var(--mono); background: var(--pill); border-radius: 4px; padding: 2px 6px; justify-self: start; color: #3b3a36; }
+  .row .fn.g { background: #1313121a; }
+  .row .q { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .a { font-weight: 600; font-size: 15px; text-align: right; }
+  .row .a.Y { color: var(--orange); } .row .a.N { color: var(--muted); font-weight: 500; } .row .a.U { color: var(--muted); font-weight: 400; }
+  .replay .row .a.Y { color: var(--ink); }
+  .row .ms { font: 12px var(--mono); color: var(--muted); text-align: right; }
+  .row.sub .fn, .row.note .fn, .row.wait .fn { visibility: hidden; }
+  .row.sub .q { color: #3b3a36; padding-left: 2px; }
+  .row.note, .row.wait .q { color: var(--muted); font-size: 15px; }
+  .pending { color: var(--muted); letter-spacing: 2px; animation: pulse .5s ease-in-out infinite alternate; }
+
+  .grid { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: 3px; padding: 9px 0 9px 102px; flex: none; }
+  .grid span { height: 13px; border-radius: 2px; background: #e2e0da; }
+  .grid span.Y { background: var(--orange); } .grid span.N { background: #c9c6be; } .grid span.U { background: repeating-linear-gradient(45deg,#c9c6be 0 2px,transparent 2px 4px); }
+
+  .cloudwrap { flex: 1; position: relative; min-height: 118px; }
+  .cloud { position: absolute; left: 50%; top: calc(50% - 14px); width: 0; height: 0; }
+  .cloud span { position: absolute; left: 0; top: 0; font-size: 40px; line-height: 1; width: 48px; height: 48px; margin: -24px 0 0 -24px;
+                display: grid; place-items: center; transition: transform .38s cubic-bezier(.2,.8,.2,1), opacity .3s ease; }
+  .cloud span.out { opacity: 0; }
+  .left { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: 14px; color: var(--muted); transition: opacity .2s; }
+  .answer { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: 22px; font-weight: 600; opacity: 0; transition: opacity .3s; }
+  .card.won .answer { opacity: 1; } .card.won .left { opacity: 0; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--hair); padding-top: 14px; margin-top: 12px; }
+  .stats .l { font-size: 11px; letter-spacing: .12em; color: var(--muted); }
+  .stats .v { font-size: 36px; font-weight: 500; letter-spacing: -.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .stats .v small { font-size: 18px; color: var(--muted); font-weight: 400; margin-left: 2px; }
+
+  footer { position: absolute; left: 64px; right: 64px; top: 1024px; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <header>
+    <div class="kicker"><i></i><div>
+      <div class="k">TWENTY TOOL CALLS</div>
+      <h1>Sonnet 5.5 vs. Sonnet 5.5 <b>+ Span-01</b></h1>
+      <div class="sub">Same model, same game, both at 1×. On the right, Sonnet's ask() tool is Span-01, which answers a whole batch of questions at once.</div>
+    </div></div>
+    <img src="/wordmark.png" alt="Respan">
+  </header>
+  <div id="cards"></div>
+  <footer id="fine"></footer>
+</div>
+
+<script type="module">
+const params = new URLSearchParams(location.search);
+const D = await fetch("/data").then((r) => r.json());
+const N = D.emojis.length, L = D.rows, O = D.original;
+const HOLD = Number(params.get("hold") || 2800);
+
+document.getElementById("fine").innerHTML =
+  `Left: original ${O.model} run from ${O.source}'s Twenty Tool Calls video (Claude Code defaults, ${O.pool} emojis), replayed at 1×; every call's time, cost, tokens and emojis left are read from its frames. ` +
+  `Right: live. ${O.model} (${D.sonnet}, ${D.effort} effort, via ${D.via}) writes its own questions over ${N} emojis; its ask() tool is Span-01. Cost at list price.`;
+
+// ---------- stage scaling
+const stage = document.getElementById("stage");
+const fit = () => {
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  stage.style.transform = `translate(${(innerWidth - 1920 * s) / 2}px,${(innerHeight - 1080 * s) / 2}px) scale(${s})`;
+};
+addEventListener("resize", fit); fit();
+
+// Sonnet's questions that match a bank question word for word, for ranking the replay lane's cloud.
+const SAME_Q = Object.fromEntries(D.questions.map((q, i) => [q, i]));
+SAME_Q["Is it electronics?"] = SAME_Q["Does it use electricity?"] = SAME_Q["Is it electronic?"];
+const sleepUntil = (t) => new Promise((r) => setTimeout(r, Math.max(0, t - performance.now())));
+
+// ---------- formatting
+const fmtTokens = (t) => (t >= 1000 ? `${(t / 1000).toFixed(1)}<small>K</small>` : `${t}`);
+const fmtCost = (c) => (c === 0 ? "$0" : "$" + (c >= 0.01 ? c.toFixed(3) : c.toFixed(-Math.floor(Math.log10(c)))));
+const fmtSec = (ms) => `${(ms / 1000).toFixed(1)} s`;
+const ANS = { Y: "Yes", N: "No", "?": "Can't tell" };
+const CLS = { Y: "Y", N: "N", "?": "U" };
+
+class Lane {
+  constructor(mode, title, subtitle, how) {
+    this.mode = mode; // "replay" | "agent"
+    const el = (this.el = document.createElement("section"));
+    el.className = `card ${mode}`;
+    el.innerHTML = `
+      <div class="head"><div><h2>${title}</h2><div class="mode">${subtitle}</div></div><div class="status"></div></div>
+      <div class="how"><b>EACH CALL</b>${how}</div>
+      <div class="log"></div>
+      <div class="cloudwrap"><div class="cloud"></div><div class="left"></div><div class="answer"></div></div>
+      <div class="stats">
+        <div><div class="l">TOOL CALLS</div><div class="v" data-k="calls">0</div></div>
+        <div><div class="l">TIME</div><div class="v" data-k="time">0.0<small>s</small></div></div>
+        <div><div class="l">COST</div><div class="v" data-k="cost"></div></div>
+        <div><div class="l">SONNET TOKENS</div><div class="v" data-k="tokens"></div></div>
+      </div>`;
+    document.getElementById("cards").append(el);
+    this.log = el.querySelector(".log");
+    this.wrap = el.querySelector(".cloudwrap");
+    const cloud = el.querySelector(".cloud");
+    this.dots = D.emojis.map(([e]) => { const s = document.createElement("span"); s.textContent = e; cloud.append(s); return s; });
+    this.reset();
+  }
+  reset() {
+    this.calls = 0; this.t0 = 0; this.running = false;
+    this.keep = D.emojis.map((_, i) => i);
+    this.leftN = this.mode === "replay" ? O.pool : N;
+    this.el.classList.remove("won");
+    this.log.innerHTML = "";
+    this.setStatus("READY", "");
+    this.stat("calls", 0); this.stat("time", `0.0<small>s</small>`); this.stat("cost", "$0"); this.stat("tokens", "0");
+    this.el.querySelector(".answer").textContent = "";
+    this.render();
+  }
+  setStatus(text, cls) { const s = this.el.querySelector(".status"); s.textContent = text; s.className = `status ${cls}`; }
+  stat(k, v) { this.el.querySelector(`[data-k="${k}"]`).innerHTML = v; }
+  // Lays the emoji cloud out in whatever space the log leaves below it.
+  render(winner = -1) {
+    const alive = winner >= 0 ? [] : this.keep;
+    const rank = new Map(alive.map((i, k) => [i, k]));
+    const n = alive.length;
+    const R = Math.max(40, Math.min(this.wrap.offsetWidth, this.wrap.offsetHeight - 34) / 2 - 22);
+    const c = Math.min(30, R / Math.sqrt(Math.max(n, 1)));
+    const scale = Math.min(1, (1.55 * c) / 40);
+    this.dots.forEach((d, i) => {
+      if (i === winner) { d.classList.remove("out"); d.style.transform = `scale(${Math.min(2.4, (this.wrap.offsetHeight - 40) / 40).toFixed(2)})`; return; }
+      if (!rank.has(i)) { d.classList.add("out"); d.style.transform = `${d.pos || ""} scale(${(scale * 0.4).toFixed(3)})`; return; }
+      const k = rank.get(i), r = c * Math.sqrt(k + 0.5) * (n === 1 ? 0 : 1), th = k * 2.39996;
+      d.classList.remove("out");
+      d.pos = `translate(${(r * Math.cos(th)).toFixed(1)}px,${(r * Math.sin(th)).toFixed(1)}px)`;
+      d.style.transform = `${d.pos} scale(${scale.toFixed(3)})`;
+    });
+    this.el.querySelector(".left").textContent = winner >= 0 ? "" : `${this.leftN} left`;
+  }
+  row({ n = "", fn = "ask()", q, cls = "" }) {
+    const r = document.createElement("div");
+    r.className = `row ${cls}`;
+    r.innerHTML = `<span class="n">${n}</span><span class="fn${fn === "guess()" ? " g" : ""}">${fn}</span>` +
+      `<span class="q">${q}</span><span class="a">${cls === "sub" || cls === "note" ? "" : '<span class="pending">···</span>'}</span><span class="ms"></span>`;
+    this.log.append(r);
+    while (this.log.scrollHeight > this.log.clientHeight && this.log.firstChild) this.log.firstChild.remove();
+    this.render();
+    const set = (sel, html) => { r.querySelector(sel).innerHTML = html; };
+    return {
+      el: r,
+      set,
+      fill: (a, ms, text) => {
+        const cell = r.querySelector(".a");
+        cell.className = `a ${CLS[a] || ""}`;
+        cell.textContent = text ?? ANS[a];
+        if (ms != null) set(".ms", fmtSec(ms));
+      },
+    };
+  }
+  tick = () => {
+    if (!this.running) return;
+    this.stat("time", `${((performance.now() - this.t0) / 1000).toFixed(1)}<small>s</small>`);
+    requestAnimationFrame(this.tick);
+  };
+  start(label) { this.t0 = performance.now(); this.running = true; this.setStatus(label, "live"); requestAnimationFrame(this.tick); }
+  finish(won, secret, time) {
+    this.running = false;
+    this.stat("time", `${(time ?? (performance.now() - this.t0) / 1000).toFixed(1)}<small>s</small>`);
+    if (!won) return this.setStatus("NOT SOLVED", "");
+    this.el.classList.add("won");
+    this.el.querySelector(".answer").textContent = D.emojis[secret][1];
+    this.render(secret);
+    this.setStatus("SOLVED", "done");
+  }
+  play(secret) { return this.mode === "replay" ? this.playReplay(secret) : this.playAgent(secret); }
+
+  // Sonnet 5.5 alone: the original run, replayed at 1× from the values read off its video.
+  async playReplay(secret) {
+    const run = O.runs[D.emojis[secret][1]];
+    if (!run) { this.row({ q: "No original run for this emoji", cls: "note" }); return this.setStatus("NO RUN", ""); }
+    // The cloud shows our emojis, ranked by how well they fit Sonnet's answers so far (where our bank has the
+    // same question), trimmed to the original's real emojis-left count.
+    const misses = new Array(N).fill(0), gone = new Set();
+    this.start("REPLAY");
+    let prev = 0;
+    for (const [k, [fn, q, a, t, cost, tokens, left]] of run.entries()) {
+      const r = this.row({ n: k + 1, fn: `${fn}()`, q });
+      await sleepUntil(this.t0 + t * 1000);
+      this.calls = k + 1;
+      this.stat("calls", this.calls); this.stat("cost", fmtCost(cost)); this.stat("tokens", fmtTokens(tokens));
+      r.fill(a, (t - prev) * 1000);
+      prev = t;
+      if (fn === "ask" && SAME_Q[q] != null) L.forEach((row, i) => { if (row[SAME_Q[q]] !== "?" && row[SAME_Q[q]] !== a) misses[i]++; });
+      if (fn === "guess" && a === "N") gone.add(D.emojis.findIndex(([e]) => q.startsWith(e)));
+      const rest = D.emojis.map((_, i) => i).filter((i) => i !== secret && !gone.has(i)).sort((x, y) => misses[x] - misses[y] || x * 37 % 101 - y * 37 % 101);
+      this.keep = [secret, ...rest].slice(0, Math.min(left, N));
+      this.leftN = left;
+      this.render();
+    }
+    this.finish(true, secret, run.at(-1)[3]);
+  }
+
+  // Sonnet 5.5 + Span-01: live game streamed from the server.
+  async playAgent(secret) {
+    this.start("LIVE");
+    let row = null, stepStart = performance.now();
+    try {
+      const res = await fetch(`/api/agent?secret=${secret}`);
+      const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+      let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += value;
+        let nl;
+        while ((nl = buf.indexOf("\n")) >= 0) {
+          const e = JSON.parse(buf.slice(0, nl));
+          buf = buf.slice(nl + 1);
+          if (e.type === "thinking") {
+            stepStart = performance.now();
+            row = this.row({ n: this.calls + 1, fn: "", q: "Sonnet is writing its next move", cls: "wait" });
+          } else if (e.type === "ask") {
+            row ??= this.row({ n: this.calls + 1, fn: "", q: "", cls: "wait" }); // a second tool call in the same turn
+            this.calls++;
+            row.el.className = "row";
+            row.set(".fn", "ask()");
+            row.set(".q", `${e.questions.length} questions in one call`);
+            this.grid = document.createElement("div");
+            this.grid.className = "grid";
+            this.grid.style.setProperty("--cols", Math.max(12, Math.ceil(e.questions.length / Math.ceil(e.questions.length / 30))));
+            this.grid.innerHTML = "<span></span>".repeat(e.questions.length);
+            this.log.append(this.grid);
+            this.render();
+          } else if (e.type === "answers") {
+            row.fill("N", performance.now() - stepStart, `${e.answers.length} answers`);
+            [...this.grid.children].forEach((s, k) => (s.className = CLS[e.answers[k]]));
+            const yes = e.questions.filter((_, k) => e.answers[k] === "Y");
+            yes.slice(0, 5).forEach((q) => this.row({ q, cls: "sub" }).fill("Y"));
+            const no = e.answers.filter((a) => a === "N").length;
+            this.row({ q: `${yes.length > 5 ? `+${yes.length - 5} more Yes · ` : ""}${no} × No · Span-01 answered in ${fmtSec(e.spanMs)} · ${e.alive.length} still fit`, cls: "note" });
+            this.keep = e.alive; this.leftN = e.alive.length;
+            this.render();
+            row = null;
+          } else if (e.type === "guess") {
+            row ??= this.row({ n: this.calls + 1, fn: "", q: "", cls: "wait" });
+            this.calls++;
+            row.el.className = "row";
+            row.set(".fn", "guess()");
+            row.el.querySelector(".fn").classList.add("g");
+            row.set(".q", e.index >= 0 ? `${D.emojis[e.index][0]} ${D.emojis[e.index][1]}?` : `${e.name}?`);
+            row.fill(e.correct ? "Y" : "N", performance.now() - stepStart);
+            this.keep = e.alive; this.leftN = e.alive.length;
+            if (!e.correct) this.render();
+            row = null;
+          } else if (e.type === "usage" || e.type === "done") {
+            this.stat("calls", e.calls); this.stat("cost", fmtCost(e.cost)); this.stat("tokens", fmtTokens(e.sonnetTokens));
+            if (e.type === "done") return this.finish(!e.failed, secret);
+          } else if (e.type === "error") {
+            throw new Error(e.message);
+          }
+        }
+      }
+      this.finish(false, secret);
+    } catch (err) {
+      this.running = false; this.setStatus("ERROR", ""); this.row({ q: String(err.message || err), cls: "note" });
+    }
+  }
+}
+
+const lanes = [
+  new Lane("replay", O.model, `Original run · ${O.source} · replayed 1×`,
+    `Sonnet <em>generates</em> one question, waits for the answer, then generates the next one.`),
+  new Lane("agent", `${O.model} <b>+ Span-01</b>`, "Live",
+    `Sonnet writes a batch of questions in one call. Span-01 answers them all in <em>one forward pass</em> (parallel branches) and checks which emojis still fit.`),
+];
+
+// ---------- rounds
+const find = (s) => {
+  const t = s.trim().toLowerCase();
+  const i = D.emojis.findIndex(([e, name]) => name.toLowerCase() === t || e === s.trim());
+  return i >= 0 ? i : Number.isInteger(+t) ? +t : -1;
+};
+const secrets = (params.get("secrets") || Object.keys(O.runs).join(",")).split(",").map(find).filter((i) => i >= 0 && i < N);
+let playing = false;
+async function run() {
+  if (playing) return; playing = true;
+  for (let k = 0; k < secrets.length; k++) {
+    if (k) { await new Promise((r) => setTimeout(r, HOLD)); lanes.forEach((l) => l.reset()); await new Promise((r) => setTimeout(r, 450)); }
+    await Promise.all(lanes.map((l) => l.play(secrets[k])));
+  }
+  playing = false;
+}
+addEventListener("keydown", (e) => {
+  if (e.code === "Space") { e.preventDefault(); run(); }
+  if (e.key === "r" && !playing) lanes.forEach((l) => l.reset());
+});
+stage.addEventListener("click", run);
+if (params.has("auto")) setTimeout(run, 800);
+window.__game = { run, lanes, D };
+</script>
+</body>
+</html>

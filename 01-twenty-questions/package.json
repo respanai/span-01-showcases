@@ -1,0 +1,17 @@
+{
+  "name": "span-01-showcase-twenty-questions",
+  "private": true,
+  "type": "module",
+  "description": "Sonnet 5.5 + Span-01 play twenty questions: Span-01 answers each batch of questions in one forward pass.",
+  "engines": { "node": ">=20.12" },
+  "scripts": {
+    "start": "node server.mjs",
+    "record": "node record.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.129.0"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.12.0"
+  }
+}
