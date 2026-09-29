@@ -1,6 +1,8 @@
 # 01 · Twenty questions
 
-![Sonnet 5.5 vs. Sonnet 5.5 + Span-01](docs/preview.png)
+[![Sonnet 5.5 vs. Sonnet 5.5 + Span-01, in real time](docs/demo.gif)](docs/demo.mp4)
+
+▶ [Full video](docs/demo.mp4): 1920×1080, 41 s, real time, not sped up.
 
 Sonnet 5.5 plays twenty questions with two tools, `ask()` and `guess()`. Its `ask()` tool is **Span-01**, Respan's decision model. Sonnet writes a batch of yes-or-no questions, and Span-01 answers all of them in a single forward pass: each question is a parallel branch over the same context, and no text is generated. Span-01 then checks which emojis still fit every answer, so Sonnet can go straight to a guess.
 
